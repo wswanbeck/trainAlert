@@ -1,19 +1,42 @@
 {
 	"settings": {
-		"addwatch": {
-			"train-number": 330,
-			"comment": "5:10 to Lowell",
-			"feed-url": "http://developer.mbta.com/lib/RTCR/RailLine_10.json",
-			"if": {
-				"not-equal": {
-					"field-name": "Vehicle",
-					"field-value": ""
-				},
-				"then": {
-					"add-alert-email": {
-						"email-address": "olive.swanbeck@verizon.net",
-						"email-text": "The 5:10 to Lowell is vehicle #Vehicle#",
-						"ignore-note": "send a text by emailing to phone@txt.att.net"
+		"do" : {
+			"type" : "readdata",
+			"from" : {
+				"type" : "json",
+				"source" : "url",
+				"url" : "http://developer.mbta.com/lib/RTCR/RailLine_10.json"
+			},
+			
+			"do" : {		
+				"type" : "if",
+				"if-condition" : {
+		        	"operator" : "equal",
+		        	"field-name" : "Trip",
+		        	"field-value" : 330
+		  		},
+			
+				"mycomment": "5:10 to Lowell",
+			
+				"then" : {
+					"do" : {
+						"type": "if",
+						"if-condition" : {
+			        		"operator" : "not-equal",
+							"field-name": "Vehicle",
+							"field-value": ""
+						},
+						"then": {
+							"do" : {
+								"type": "send-email",
+								"email-parameters" : {
+									"email-address": "olive.swanbeck@verizon.net",
+									"email-body": "The 5:10 to Lowell is vehicle #i%Vehicle%",
+									"ignore-this": "send a text by emailing to phone@txt.att.net",
+									"max-frequency" : "once-per-day"
+								}
+							}
+						}
 					}
 				}
 			}
