@@ -5,6 +5,7 @@ import unittest
 
 import json
 import pdb
+import urllib2
 
 # base class for all configuration items
 class ConfigItem:
@@ -23,6 +24,9 @@ class ConfigItem:
 
         return ret
 
+    def run(self, context):
+        print "running ConfigItem base class"
+
 # 'readdata' config item
 class ReadData_ConfigItem(ConfigItem):
 
@@ -35,6 +39,12 @@ class ReadData_ConfigItem(ConfigItem):
         
         self.subConfigItem = ConfigItem.createConfigItem(configJson["do"]) # check if ["do"] exists first ___
 
+    def run(self, context):
+        print "running ReadData_ConfigItem class"
+        # ignore incoming context.  We set it to whatever we've been directed to read
+        self.context = urllib2.urlopen("http://developer.mbta.com/lib/RTCR/RailLine_10.json").read()
+        self.subConfigItem.run(self.context)
+
 # 'if' config item
 class If_ConfigItem(ConfigItem):
 
@@ -46,6 +56,9 @@ class If_ConfigItem(ConfigItem):
         
         self.then_json = configJson["then"]
         self.then_subConfigItem = ConfigItem.createConfigItem(self.then_json["do"])        
+
+    def run(self, context):
+        print "running If_ConfigItem class"
 
 # 'send-email' config item
 class SendEmail_ConfigItem(ConfigItem):
@@ -67,6 +80,9 @@ class Config:
         # build config tree
         self.configTree = ConfigItem.createConfigItem(self.data["settings"]["do"])
 
+    def run(self):
+        self.configTree.run("")
+
 # Test configuration file reading and processing
 class TestFeed(unittest.TestCase):
 
@@ -84,6 +100,10 @@ class TestFeed(unittest.TestCase):
         self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.__class__.__name__, "If_ConfigItem")
         self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.then_subConfigItem.__class__.__name__, "SendEmail_ConfigItem")
         self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.then_subConfigItem.emailaddress, "olive.swanbeck@verizon.net")
+
+    def test_runconfig(self):
+        cfg = Config("testdata/testconfig.json")
+        cfg.run()
 
 
 if __name__ == '__main__':
