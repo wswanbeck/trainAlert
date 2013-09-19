@@ -16,9 +16,14 @@ class Config:
 # Test configuration file reading and processing
 class TestFeed(unittest.TestCase):
 
+    # read a config file - check if it worked
     def test_readconfig(self):
         cfg = Config("testdata/testconfig.json")
+        # make sure it starts with "settings" level
         self.assertTrue(cfg.data["settings"] != None)
+        # next level should be "addwatch"
+        settings = cfg.data["settings"]
+        self.assertTrue(settings["addwatch"] != None)
 
 if __name__ == '__main__':
     unittest.main()
