@@ -1,0 +1,22 @@
+{
+    "settings" : {
+        "addwatch" : {
+            "train-number" : 330,
+            "comment" : "5:10 to Lowell",
+            "feed-url" : "http://developer.mbta.com/lib/RTCR/RailLine_10.json",
+            "if" : {
+                "not-equal" : {
+                    "field-name" : "Vehicle",
+                    "field-value" : ""
+                },
+                "then" : {
+                    "add-alert-email" : {
+                        "email-address" : "olive.swanbeck@verizon.net",
+                        "email-text" : "The 5:10 to Lowell is vehicle #%Vehicle%",
+                        "ignore-note" : "send a text by emailing to phone@txt.att.net"
+                    }.
+                },
+            },
+        },
+    },
+}
