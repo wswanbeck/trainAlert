@@ -34,16 +34,22 @@ class ReadData_ConfigItem(ConfigItem):
         self.datasource_json = configJson["from"]
 
         self.type = self.datasource_json["type"] # "json" presumably
-        self.source = self.datasource_json["source"] # "url" presumably
-        self.url = self.datasource_json["url"]  # url of the data
+        self.source = self.datasource_json["source"] # "url" or "filepath"
+        if self.source == "url":
+            self.url = self.datasource_json["url"]  # url of the data
+        elif self.source == "filepath":
+            self.filepath = self.datasource_json["filepath"]
         
         self.subConfigItem = ConfigItem.createConfigItem(configJson["do"]) # check if ["do"] exists first ___
 
     def run(self, context):
         print "running ReadData_ConfigItem class"
         # ignore incoming context.  We set it to whatever we've been directed to read
-        self.context = urllib2.urlopen("http://developer.mbta.com/lib/RTCR/RailLine_10.json").read()
-
+        if self.source == "url":
+            self.context = urllib2.urlopen(self.url).read()
+        elif self.source == "filepath":
+            with open(self.filepath) as f:
+                self.context = f.read()
         # call this subitem repeatedly for each ["Message"] in the context data we just read in
         for message in json.loads(self.context)["Messages"]:
             self.subConfigItem.run(message)
@@ -78,9 +84,10 @@ class SendEmail_ConfigItem(ConfigItem):
         self.emailbody = self.params_json["email-body"]
         self.max_frequency = self.params_json["max-frequency"]
 
-    def run (self, context):
-        print "running SendEmail_ConfigItem class"
-        print "*** " + self.emailbody + " ***"
+    def run(self, context):
+        print "running SendEmail_ConfigItem"
+        print "Message is: " + self.emailbody
+        print "Context is: " + context
 
 class Config:
 
@@ -104,7 +111,7 @@ class TestFeed(unittest.TestCase):
         # make sure it starts with "settings" level
         self.assertTrue(cfg.configTree != None)
         self.assertEqual(cfg.configTree.__class__.__name__, "ReadData_ConfigItem")
-        self.assertEqual(cfg.configTree.url, "http://developer.mbta.com/lib/RTCR/RailLine_10.json")
+        self.assertEqual(cfg.configTree.filepath, "./testdata/testMBTAfeed.json")
         self.assertEqual(cfg.configTree.subConfigItem.__class__.__name__, "If_ConfigItem")
         self.assertEqual(cfg.configTree.subConfigItem.field_name, "Trip")
         self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.__class__.__name__, "If_ConfigItem")
@@ -115,6 +122,10 @@ class TestFeed(unittest.TestCase):
 
     def test_runconfig(self):
         cfg = Config("testdata/testconfig.json")
+        cfg.run()
+
+    def test_runconfig_online(self):
+        cfg = Config("testdata/testconfig_online.json")
         cfg.run()
 
 
