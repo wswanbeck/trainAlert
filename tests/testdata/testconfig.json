@@ -31,7 +31,7 @@
 								"type": "send-email",
 								"email-parameters" : {
 									"email-address": "olive.swanbeck@verizon.net",
-									"email-body": "The 5:10 to Lowell is vehicle #i%Vehicle%",
+									"email-body": "The 328 trip is vehicle #i%(Vehicle)s",
 									"ignore-this": "send a text by emailing to phone@txt.att.net",
 									"max-frequency" : "once-per-day"
 								}

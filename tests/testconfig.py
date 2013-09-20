@@ -43,7 +43,6 @@ class ReadData_ConfigItem(ConfigItem):
         self.subConfigItem = ConfigItem.createConfigItem(configJson["do"]) # check if ["do"] exists first ___
 
     def run(self, context):
-        print "running ReadData_ConfigItem class"
         # ignore incoming context.  We set it to whatever we've been directed to read
         if self.source == "url":
             self.context = urllib2.urlopen(self.url).read()
@@ -67,12 +66,11 @@ class If_ConfigItem(ConfigItem):
         self.then_subConfigItem = ConfigItem.createConfigItem(self.then_json["do"])        
 
     def run(self, context):
-        print "running If_ConfigItem class"
         if self.operator == "not-equal":
-            if context[self.field_name] != context[self.field_value]:
+            if str(context[self.field_name]) != str(self.field_value):
                 self.then_subConfigItem.run(context)
         elif self.operator == "equal":
-            if context[self.field_name] == context[self.field_value]:
+            if str(context[self.field_name]) == str(self.field_value):
                 self.then_subConfigItem.run(context)
 
 # 'send-email' config item
@@ -85,9 +83,7 @@ class SendEmail_ConfigItem(ConfigItem):
         self.max_frequency = self.params_json["max-frequency"]
 
     def run(self, context):
-        print "running SendEmail_ConfigItem"
-        print "Message is: " + self.emailbody
-        print "Context is: " + context
+        print "Message is: " + self.emailbody % context
 
 class Config:
 
