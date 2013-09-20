@@ -43,7 +43,10 @@ class ReadData_ConfigItem(ConfigItem):
         print "running ReadData_ConfigItem class"
         # ignore incoming context.  We set it to whatever we've been directed to read
         self.context = urllib2.urlopen("http://developer.mbta.com/lib/RTCR/RailLine_10.json").read()
-        self.subConfigItem.run(self.context)
+
+        # call this subitem repeatedly for each ["Message"] in the context data we just read in
+        for message in json.loads(self.context)["Messages"]:
+            self.subConfigItem.run(message)
 
 # 'if' config item
 class If_ConfigItem(ConfigItem):
@@ -59,6 +62,12 @@ class If_ConfigItem(ConfigItem):
 
     def run(self, context):
         print "running If_ConfigItem class"
+        if self.operator == "not-equal":
+            if context[self.field_name] != context[self.field_value]:
+                self.then_subConfigItem.run(context)
+        elif self.operator == "equal":
+            if context[self.field_name] == context[self.field_value]:
+                self.then_subConfigItem.run(context)
 
 # 'send-email' config item
 class SendEmail_ConfigItem(ConfigItem):
@@ -69,6 +78,9 @@ class SendEmail_ConfigItem(ConfigItem):
         self.emailbody = self.params_json["email-body"]
         self.max_frequency = self.params_json["max-frequency"]
 
+    def run (self, context):
+        print "running SendEmail_ConfigItem class"
+        print "*** " + self.emailbody + " ***"
 
 class Config:
 
