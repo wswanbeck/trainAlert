@@ -4,8 +4,8 @@
 			"type" : "readdata",
 			"from" : {
 				"type" : "json",
-				"source" : "filepath",
-				"filepath" : "./testdata/testMBTAfeed.json"
+				"source" : "url",
+				"url" : "http://developer.mbta.com/lib/RTCR/RailLine_10.json"
 			},
 			
 			"do" : {		
@@ -13,7 +13,7 @@
 				"if-condition" : {
 		        	"operator" : "equal",
 		        	"field-name" : "Trip",
-		        	"field-value" : 328
+		        	"field-value" : 330
 		  		},
 			
 				"mycomment": "5:10 to Lowell",
