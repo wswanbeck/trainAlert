@@ -21,11 +21,34 @@ class ConfigItem:
             ret = If_ConfigItem(jsonData)
         elif type == "send-email":
             ret = SendEmail_ConfigItem(jsonData)
+        elif type == "schedule":
+            ret = Schedule_ConfigItem(jsonData)
+        else:
+            print "**** Unknown element in config: '" + str(type) + "'"
+            ret = None
 
         return ret
 
-    def run(self, context):
+    def run(self, context, feeddata):
         print "running ConfigItem base class"
+
+# 'schedule' config item
+class Schedule_ConfigItem(ConfigItem):
+
+    def __init__ (self, configJson):
+        self.schedule_days = configJson["schedule-days"]
+        self.complete_variable_name = configJson["complete-variable-name"]
+        self.subConfigItem = ConfigItem.createConfigItem(configJson["do"]) # check if ["do"] exists first ___
+
+    def run(self, context, feeddata):
+        # check if alert has already been sent
+        if self.complete_variable_name in context:
+            if context[self.complete_variable_name]:
+                return  # already done today, don't do it again
+        else:
+            context[self.complete_variable_name] = False
+
+        self.subConfigItem.run(context, feeddata)
 
 # 'readdata' config item
 class ReadData_ConfigItem(ConfigItem):
@@ -42,16 +65,16 @@ class ReadData_ConfigItem(ConfigItem):
         
         self.subConfigItem = ConfigItem.createConfigItem(configJson["do"]) # check if ["do"] exists first ___
 
-    def run(self, context):
-        # ignore incoming context.  We set it to whatever we've been directed to read
+    def run(self, context, feeddata):
+        # ignore incoming feeddata.  We set it to whatever we've been directed to read
         if self.source == "url":
-            self.context = urllib2.urlopen(self.url).read()
+            self.feeddata = urllib2.urlopen(self.url).read()
         elif self.source == "filepath":
             with open(self.filepath) as f:
-                self.context = f.read()
-        # call this subitem repeatedly for each ["Message"] in the context data we just read in
-        for message in json.loads(self.context)["Messages"]:
-            self.subConfigItem.run(message)
+                self.feeddata = f.read()
+        # call this subitem repeatedly for each ["Message"] in the feeddata data we just read in
+        for message in json.loads(self.feeddata)["Messages"]:
+            self.subConfigItem.run(context, message)
 
 # 'if' config item
 class If_ConfigItem(ConfigItem):
@@ -65,13 +88,13 @@ class If_ConfigItem(ConfigItem):
         self.then_json = configJson["then"]
         self.then_subConfigItem = ConfigItem.createConfigItem(self.then_json["do"])        
 
-    def run(self, context):
+    def run(self, context, feeddata):
         if self.operator == "not-equal":
-            if str(context[self.field_name]) != str(self.field_value):
-                self.then_subConfigItem.run(context)
+            if str(feeddata[self.field_name]) != str(self.field_value):
+                self.then_subConfigItem.run(context, feeddata)
         elif self.operator == "equal":
-            if str(context[self.field_name]) == str(self.field_value):
-                self.then_subConfigItem.run(context)
+            if str(feeddata[self.field_name]) == str(self.field_value):
+                self.then_subConfigItem.run(context, feeddata)
 
 # 'send-email' config item
 class SendEmail_ConfigItem(ConfigItem):
@@ -80,10 +103,16 @@ class SendEmail_ConfigItem(ConfigItem):
         self.params_json = configJson["email-parameters"]
         self.emailaddress = self.params_json["email-address"]
         self.emailbody = self.params_json["email-body"]
-        self.max_frequency = self.params_json["max-frequency"]
+        self.set_variable = None
+        if "set-variable" in self.params_json:
+            self.set_variable = self.params_json["set-variable"]
 
-    def run(self, context):
-        print "Message is: " + self.emailbody % context
+    def run(self, context, feeddata):
+        print "Message is: " + self.emailbody % feeddata
+        # set the variable in the context that we were told to now that we've sent an alert
+        pdb.set_trace()
+        if self.set_variable != None:
+            context[self.set_variable] = True
 
 class Config:
 
@@ -96,7 +125,10 @@ class Config:
         self.configTree = ConfigItem.createConfigItem(self.data["settings"]["do"])
 
     def run(self):
-        self.configTree.run("")
+        if self.configTree != None:
+            self.configTree.run({}, "")
+        else:
+            print "**** Config not parsed.  Nothing will be run"
 
 # Test configuration file reading and processing
 class TestFeed(unittest.TestCase):
@@ -106,15 +138,16 @@ class TestFeed(unittest.TestCase):
         cfg = Config("testdata/testconfig.json")
         # make sure it starts with "settings" level
         self.assertTrue(cfg.configTree != None)
-        self.assertEqual(cfg.configTree.__class__.__name__, "ReadData_ConfigItem")
-        self.assertEqual(cfg.configTree.filepath, "./testdata/testMBTAfeed.json")
-        self.assertEqual(cfg.configTree.subConfigItem.__class__.__name__, "If_ConfigItem")
-        self.assertEqual(cfg.configTree.subConfigItem.field_name, "Trip")
-        self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.__class__.__name__, "If_ConfigItem")
-        self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.field_name, "Vehicle")
-        self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.__class__.__name__, "If_ConfigItem")
-        self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.then_subConfigItem.__class__.__name__, "SendEmail_ConfigItem")
-        self.assertEqual(cfg.configTree.subConfigItem.then_subConfigItem.then_subConfigItem.emailaddress, "olive.swanbeck@verizon.net")
+        self.assertEqual(cfg.configTree.__class__.__name__, "Schedule_ConfigItem")
+        self.assertEqual(cfg.configTree.subConfigItem.__class__.__name__, "ReadData_ConfigItem")
+        self.assertEqual(cfg.configTree.subConfigItem.filepath, "./testdata/testMBTAfeed.json")
+        self.assertEqual(cfg.configTree.subConfigItem.subConfigItem.__class__.__name__, "If_ConfigItem")
+        self.assertEqual(cfg.configTree.subConfigItem.subConfigItem.field_name, "Trip")
+        self.assertEqual(cfg.configTree.subConfigItem.subConfigItem.then_subConfigItem.__class__.__name__, "If_ConfigItem")
+        self.assertEqual(cfg.configTree.subConfigItem.subConfigItem.then_subConfigItem.field_name, "Vehicle")
+        self.assertEqual(cfg.configTree.subConfigItem.subConfigItem.then_subConfigItem.__class__.__name__, "If_ConfigItem")
+        self.assertEqual(cfg.configTree.subConfigItem.subConfigItem.then_subConfigItem.then_subConfigItem.__class__.__name__, "SendEmail_ConfigItem")
+        self.assertEqual(cfg.configTree.subConfigItem.subConfigItem.then_subConfigItem.then_subConfigItem.emailaddress, "olive.swanbeck@verizon.net")
 
     def test_runconfig(self):
         cfg = Config("testdata/testconfig.json")
